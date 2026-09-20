@@ -437,23 +437,36 @@ select {
 
 <script>
 
-let audioContext;
-let analyser;
-let microphone;
-let stream;
-let animationId;
+
+let audioContext = null;
+
+let analyser = null;
+
+let microphone = null;
+
+let stream = null;
+
+let animationId = null;
 
 let running = false;
 
 let totalSamples = 0;
+
 let accurateSamples = 0;
+
 let inTuneSeconds = 0;
-let lastTime = null;
 
+let lastGoodTime = null;
 
-/* -------------------------
+let lastDetectedNote = "";
+
+let stablePitch = null;
+
+/* =========================
+
    START MICROPHONE
-------------------------- */
+
+========================= */
 
 async function startPitch() {
 
@@ -461,255 +474,463 @@ async function startPitch() {
 
   try {
 
+    if (!navigator.mediaDevices ||
+
+        !navigator.mediaDevices.getUserMedia) {
+
+      document.getElementById("status").innerText =
+
+        "Microphone is not supported in this browser.";
+
+      return;
+
+    }
+
+    document.getElementById("status").innerText =
+
+      "🎤 Requesting microphone...";
+
     stream = await navigator.mediaDevices.getUserMedia({
+
       audio: {
+
         echoCancellation: false,
+
+        noiseSuppression: false,
+
         autoGainControl: false,
-        noiseSuppression: false
+
+        channelCount: 1
+
       }
+
     });
 
-    audioContext = new (window.AudioContext ||
-      window.webkitAudioContext)();
+    audioContext =
+
+      new (window.AudioContext ||
+
+           window.webkitAudioContext)();
 
     await audioContext.resume();
 
     microphone =
+
       audioContext.createMediaStreamSource(stream);
 
     analyser =
+
       audioContext.createAnalyser();
 
     analyser.fftSize = 4096;
 
-    analyser.smoothingTimeConstant = 0;
+    analyser.smoothingTimeConstant = 0.15;
 
     microphone.connect(analyser);
 
     running = true;
 
     totalSamples = 0;
+
     accurateSamples = 0;
+
     inTuneSeconds = 0;
-    lastTime = performance.now();
+
+    lastGoodTime = performance.now();
+
+    lastDetectedNote = "";
+
+    stablePitch = null;
+
+    document.getElementById("accuracy").innerText = "0%";
+
+    document.getElementById("inTune").innerText = "0.0s";
+
+    document.getElementById("samples").innerText = "0";
 
     document.getElementById("status").innerText =
-      "🎤 Listening... Sing a note";
 
-    document.getElementById("status").className = "";
+      "🎤 Listening... Sing a clear note";
 
     detectPitch();
 
   }
 
-  catch(error) {
+  catch (error) {
 
-    console.log(error);
+    console.log("Microphone error:", error);
 
-    document.getElementById("status").innerText =
-      "Microphone permission is required.";
+    if (error.name === "NotAllowedError") {
+
+      document.getElementById("status").innerText =
+
+        "❌ Microphone permission denied. Allow microphone access.";
+
+    }
+
+    else if (error.name === "NotFoundError") {
+
+      document.getElementById("status").innerText =
+
+        "❌ No microphone found.";
+
+    }
+
+    else {
+
+      document.getElementById("status").innerText =
+
+        "❌ Microphone error. Try again.";
+
+    }
 
   }
 
 }
 
+/* =========================
 
-/* -------------------------
    STOP
-------------------------- */
+
+========================= */
 
 function stopPitch() {
 
   running = false;
 
   if (animationId) {
+
     cancelAnimationFrame(animationId);
+
+    animationId = null;
+
   }
 
   if (stream) {
 
     stream.getTracks().forEach(track => {
+
       track.stop();
+
     });
+
+    stream = null;
 
   }
 
   if (audioContext) {
+
     audioContext.close();
+
+    audioContext = null;
+
   }
 
+  analyser = null;
+
+  microphone = null;
+
+  stablePitch = null;
+
   document.getElementById("status").innerText =
+
     "Microphone is off";
+
+  document.getElementById("note").innerText =
+
+    "—";
+
+  document.getElementById("frequency").innerText =
+
+    "Frequency: — Hz";
+
+  document.getElementById("cents").innerText =
+
+    "Sing a note";
+
+  document.getElementById("cents").className = "";
+
+  document.getElementById("needle").style.left =
+
+    "50%";
 
 }
 
+/* =========================
 
-/* -------------------------
-   DETECT PITCH
-------------------------- */
+   MAIN DETECTION LOOP
+
+========================= */
 
 function detectPitch() {
 
-  if (!running) return;
+  if (!running || !analyser) return;
 
   const buffer =
+
     new Float32Array(analyser.fftSize);
 
   analyser.getFloatTimeDomainData(buffer);
 
   const frequency =
+
     autoCorrelate(
+
       buffer,
+
       audioContext.sampleRate
+
     );
 
-  if (frequency !== -1) {
+  if (frequency > 0) {
+
+    /*
+
+       Smooth pitch to prevent jumping
+
+    */
+
+    if (stablePitch === null) {
+
+      stablePitch = frequency;
+
+    } else {
+
+      stablePitch =
+
+        stablePitch * 0.75 +
+
+        frequency * 0.25;
+
+    }
 
     const result =
-      frequencyToNote(frequency);
+
+      frequencyToNote(stablePitch);
 
     document.getElementById("note").innerText =
+
       result.note;
 
     document.getElementById("frequency").innerText =
+
       "Frequency: " +
-      frequency.toFixed(1) +
+
+      stablePitch.toFixed(1) +
+
       " Hz";
 
-    updatePitch(result, frequency);
+    updatePitch(result);
 
   }
 
   animationId =
+
     requestAnimationFrame(detectPitch);
+
 }
 
+/* =========================
 
-/* -------------------------
-   PITCH ANALYSIS
-------------------------- */
+   PITCH DISPLAY
 
-function updatePitch(result, frequency) {
+========================= */
+
+function updatePitch(result) {
 
   const cents = result.cents;
 
-  const centsText =
-    (cents > 0 ? "+" : "") +
-    cents.toFixed(0) +
-    " cents";
-
   const centsElement =
+
     document.getElementById("cents");
 
+  const noteElement =
+
+    document.getElementById("note");
+
+  const statusElement =
+
+    document.getElementById("status");
+
+  const needle =
+
+    document.getElementById("needle");
+
   centsElement.innerText =
-    centsText;
+
+    (cents >= 0 ? "+" : "") +
+
+    cents.toFixed(0) +
+
+    " cents";
 
   centsElement.className = "";
 
   /*
-     Limit meter to ±50 cents
+
+     Meter range = -50 to +50 cents
+
   */
 
-  let position =
-    50 + Math.max(-50, Math.min(50, cents));
+  const position =
 
-  document.getElementById("needle")
-    .style.left = position + "%";
+    50 +
 
+    Math.max(
+
+      -50,
+
+      Math.min(50, cents)
+
+    );
+
+  needle.style.left =
+
+    position + "%";
 
   totalSamples++;
 
-
   /*
-     IN TUNE = within ±10 cents
+
+     IN TUNE
+
+     ±10 cents
+
   */
 
   if (Math.abs(cents) <= 10) {
 
     accurateSamples++;
 
-    document.getElementById("status").innerText =
+    statusElement.innerText =
+
       "✓ PERFECT — In tune";
 
     centsElement.classList.add("perfect");
 
-    if (Math.abs(cents) <= 5) {
+    const now =
 
-      document.getElementById("note")
-        .classList.add("success");
+      performance.now();
 
-    }
-
-    const now = performance.now();
-
-    if (lastTime) {
+    if (lastGoodTime !== null) {
 
       const delta =
-        (now - lastTime) / 1000;
 
-      if (delta < 0.2) {
+        (now - lastGoodTime) / 1000;
+
+      if (delta > 0 && delta < 0.3) {
+
         inTuneSeconds += delta;
+
       }
 
     }
 
-  }
+    lastGoodTime = now;
 
-  else if (cents < 0) {
+    if (Math.abs(cents) <= 5) {
 
-    document.getElementById("status").innerText =
-      "♭ Slightly flat";
+      noteElement.classList.add("success");
 
-    centsElement.classList.add(
-      Math.abs(cents) > 30 ? "off" : "flat"
-    );
+      setTimeout(() => {
+
+        noteElement.classList.remove("success");
+
+      }, 300);
+
+    }
 
   }
 
   else {
 
-    document.getElementById("status").innerText =
-      "♯ Slightly sharp";
+    lastGoodTime =
 
-    centsElement.classList.add(
-      Math.abs(cents) > 30 ? "off" : "sharp"
-    );
+      performance.now();
+
+    if (cents < 0) {
+
+      statusElement.innerText =
+
+        Math.abs(cents) > 30
+
+          ? "♭ Too Low"
+
+          : "♭ Slightly Low";
+
+      centsElement.classList.add(
+
+        Math.abs(cents) > 30
+
+          ? "off"
+
+          : "flat"
+
+      );
+
+    }
+
+    else {
+
+      statusElement.innerText =
+
+        Math.abs(cents) > 30
+
+          ? "♯ Too High"
+
+          : "♯ Slightly High";
+
+      centsElement.classList.add(
+
+        Math.abs(cents) > 30
+
+          ? "off"
+
+          : "sharp"
+
+      );
+
+    }
 
   }
 
-  lastTime =
-    performance.now();
-
-
-  /*
-     Accuracy
-  */
-
   const accuracy =
-    (accurateSamples / totalSamples) * 100;
 
-  document.getElementById("accuracy")
-    .innerText =
+    totalSamples > 0
+
+      ? (accurateSamples / totalSamples) * 100
+
+      : 0;
+
+  document.getElementById("accuracy").innerText =
+
     accuracy.toFixed(0) + "%";
 
-  document.getElementById("inTune")
-    .innerText =
+  document.getElementById("inTune").innerText =
+
     inTuneSeconds.toFixed(1) + "s";
 
-  document.getElementById("samples")
-    .innerText =
+  document.getElementById("samples").innerText =
+
     totalSamples;
 
 }
 
+/* =========================
 
-/* -------------------------
-   AUTOCORRELATION
-------------------------- */
+   RELIABLE AUTOCORRELATION
+
+========================= */
 
 function autoCorrelate(buffer, sampleRate) {
 
   const SIZE = buffer.length;
+
+  /*
+
+     Calculate RMS volume
+
+  */
 
   let rms = 0;
 
@@ -720,257 +941,488 @@ function autoCorrelate(buffer, sampleRate) {
   }
 
   rms =
+
     Math.sqrt(rms / SIZE);
 
   /*
-     Ignore very quiet sound
+
+     Ignore silence / background noise
+
   */
 
-  if (rms < 0.008) {
+  if (rms < 0.012) {
+
     return -1;
+
   }
 
-
   /*
-     Singer range:
-     approximately 60–1000 Hz
+
+     Remove DC offset
+
   */
 
-  const minFreq = 60;
+  let mean = 0;
+
+  for (let i = 0; i < SIZE; i++) {
+
+    mean += buffer[i];
+
+  }
+
+  mean /= SIZE;
+
+  const signal =
+
+    new Float32Array(SIZE);
+
+  for (let i = 0; i < SIZE; i++) {
+
+    signal[i] =
+
+      buffer[i] - mean;
+
+  }
+
+  /*
+
+     Singer frequency range:
+
+     70 Hz – 1000 Hz
+
+  */
+
+  const minFreq = 70;
+
   const maxFreq = 1000;
 
-  const minOffset =
+  const minLag =
+
     Math.floor(sampleRate / maxFreq);
 
-  const maxOffset =
+  const maxLag =
+
     Math.floor(sampleRate / minFreq);
 
+  let bestLag = -1;
 
-  let bestOffset = -1;
-  let bestCorrelation = 0;
+  let bestScore = -Infinity;
 
+  /*
+
+     Normalized autocorrelation
+
+     This is more reliable than the
+
+     previous raw correlation method.
+
+  */
 
   for (
-    let offset = minOffset;
-    offset <= maxOffset;
-    offset++
+
+    let lag = minLag;
+
+    lag <= maxLag;
+
+    lag++
+
   ) {
 
-    let correlation = 0;
+    let sumXY = 0;
 
-    for (
-      let i = 0;
-      i < SIZE - offset;
-      i++
-    ) {
+    let sumX2 = 0;
 
-      correlation +=
-        buffer[i] *
-        buffer[i + offset];
+    let sumY2 = 0;
+
+    const limit =
+
+      SIZE - lag;
+
+    for (let i = 0; i < limit; i++) {
+
+      const x =
+
+        signal[i];
+
+      const y =
+
+        signal[i + lag];
+
+      sumXY += x * y;
+
+      sumX2 += x * x;
+
+      sumY2 += y * y;
 
     }
 
-    correlation /=
-      SIZE - offset;
+    if (sumX2 === 0 || sumY2 === 0) {
 
+      continue;
 
-    if (correlation > bestCorrelation) {
+    }
 
-      bestCorrelation =
-        correlation;
+    const score =
 
-      bestOffset =
-        offset;
+      sumXY /
+
+      Math.sqrt(sumX2 * sumY2);
+
+    if (score > bestScore) {
+
+      bestScore = score;
+
+      bestLag = lag;
 
     }
 
   }
 
-
   /*
-     Reject weak pitch detection
+
+     Reject unreliable detection
+
   */
 
   if (
-    bestOffset === -1 ||
-    bestCorrelation < 0.01
+
+    bestLag === -1 ||
+
+    bestScore < 0.55
+
   ) {
 
     return -1;
 
   }
 
+  /*
 
-  return sampleRate / bestOffset;
+     Parabolic interpolation
+
+     improves frequency accuracy
+
+  */
+
+  let refinedLag =
+
+    bestLag;
+
+  if (
+
+    bestLag > minLag &&
+
+    bestLag < maxLag
+
+  ) {
+
+    const c1 =
+
+      correlationAtLag(
+
+        signal,
+
+        bestLag - 1
+
+      );
+
+    const c2 =
+
+      correlationAtLag(
+
+        signal,
+
+        bestLag
+
+      );
+
+    const c3 =
+
+      correlationAtLag(
+
+        signal,
+
+        bestLag + 1
+
+      );
+
+    const denominator =
+
+      c1 - 2 * c2 + c3;
+
+    if (Math.abs(denominator) > 0.000001) {
+
+      refinedLag =
+
+        bestLag +
+
+        0.5 *
+
+        (c1 - c3) /
+
+        denominator;
+
+    }
+
+  }
+
+  return sampleRate / refinedLag;
 
 }
 
+/* =========================
 
-/* -------------------------
+   CORRELATION AT LAG
+
+========================= */
+
+function correlationAtLag(signal, lag) {
+
+  const SIZE = signal.length;
+
+  const limit = SIZE - lag;
+
+  let sumXY = 0;
+
+  let sumX2 = 0;
+
+  let sumY2 = 0;
+
+  for (let i = 0; i < limit; i++) {
+
+    const x = signal[i];
+
+    const y = signal[i + lag];
+
+    sumXY += x * y;
+
+    sumX2 += x * x;
+
+    sumY2 += y * y;
+
+  }
+
+  if (sumX2 === 0 || sumY2 === 0) {
+
+    return 0;
+
+  }
+
+  return (
+
+    sumXY /
+
+    Math.sqrt(sumX2 * sumY2)
+
+  );
+
+}
+
+/* =========================
+
    FREQUENCY → NOTE
-------------------------- */
+
+========================= */
 
 function frequencyToNote(frequency) {
 
   const notes = [
+
     "C", "C#", "D", "D#", "E", "F",
+
     "F#", "G", "G#", "A", "A#", "B"
+
   ];
 
-
   const exactMidi =
+
     69 +
+
     12 *
+
     Math.log2(frequency / 440);
 
-
   const midi =
+
     Math.round(exactMidi);
 
-
   const note =
+
     notes[
+
       ((midi % 12) + 12) % 12
+
     ];
 
-
   const octave =
+
     Math.floor(midi / 12) - 1;
 
-
-  /*
-     Cents deviation from nearest note
-  */
-
   const cents =
-    (exactMidi - midi) * 100;
 
+    (exactMidi - midi) * 100;
 
   return {
 
-    note: note + octave,
+    note:
 
-    midi: midi,
+      note + octave,
 
-    cents: cents
+    midi:
+
+      midi,
+
+    cents:
+
+      cents
 
   };
 
 }
 
+/* =========================
 
-/* -------------------------
-   TARGET NOTE
-------------------------- */
+   NOTE → FREQUENCY
+
+========================= */
 
 function noteToFrequency(note) {
 
   const notes = [
+
     "C", "C#", "D", "D#", "E", "F",
+
     "F#", "G", "G#", "A", "A#", "B"
+
   ];
 
-
   const match =
+
     note.match(/^([A-G]#?)(\d)$/);
 
   if (!match) return 440;
 
+  const noteName =
 
-  const noteName = match[1];
+    match[1];
 
   const octave =
+
     parseInt(match[2]);
 
-
   const noteIndex =
+
     notes.indexOf(noteName);
 
-
   const midi =
+
     (octave + 1) * 12 +
+
     noteIndex;
 
-
   return 440 *
+
     Math.pow(
+
       2,
+
       (midi - 69) / 12
+
     );
 
 }
 
+/* =========================
 
-/* -------------------------
-   PLAY TARGET
-------------------------- */
+   PLAY TARGET NOTE
 
-function playTarget() {
+========================= */
+
+async function playTarget() {
 
   const target =
-    document.getElementById("targetNote")
-      .value;
+
+    document.getElementById("targetNote").value;
 
   const frequency =
+
     noteToFrequency(target);
 
-
   const ctx =
-    new (window.AudioContext ||
-      window.webkitAudioContext)();
 
+    new (window.AudioContext ||
+
+         window.webkitAudioContext)();
+
+  await ctx.resume();
 
   const oscillator =
+
     ctx.createOscillator();
 
   const gain =
+
     ctx.createGain();
 
-
   oscillator.type =
+
     "sine";
 
   oscillator.frequency.value =
+
     frequency;
 
-
   gain.gain.setValueAtTime(
+
     0,
+
     ctx.currentTime
+
   );
 
-
   gain.gain.linearRampToValueAtTime(
+
     0.25,
-    ctx.currentTime + 0.05
-  );
 
+    ctx.currentTime + 0.05
+
+  );
 
   gain.gain.linearRampToValueAtTime(
-    0,
-    ctx.currentTime + 1.2
-  );
 
+    0,
+
+    ctx.currentTime + 1.2
+
+  );
 
   oscillator.connect(gain);
 
   gain.connect(ctx.destination);
 
-
   oscillator.start();
 
   oscillator.stop(
+
     ctx.currentTime + 1.2
+
   );
 
-
   document.getElementById(
+
     "targetMessage"
+
   ).innerText =
-    "🎯 Target: " + target +
+
+    "🎯 Target: " +
+
+    target +
+
     " — now sing and match it.";
 
 }
+
+
 
 </script>
 
