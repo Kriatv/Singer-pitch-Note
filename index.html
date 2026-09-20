@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Singer Pitch Note</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #111827;
+      color: white;
+      padding: 30px 15px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: #cbd5e1;
+    }
+
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 16px 30px;
+      border-radius: 12px;
+      font-size: 18px;
+      margin: 20px;
+    }
+
+    #note {
+      font-size: 70px;
+      font-weight: bold;
+      margin-top: 30px;
+    }
+
+    #frequency {
+      font-size: 24px;
+      color: #93c5fd;
+    }
+
+    #status {
+      margin-top: 20px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🎤 Singer Pitch Note</h1>
+
+  <p>Sing a note and see its musical pitch.</p>
+
+  <button onclick="startPitch()">Start Singing</button>
+
+  <div id="note">—</div>
+
+  <div id="frequency">Frequency: — Hz</div>
+
+  <div id="status">Microphone not started</div>
+
+<script>
+
+let audioContext;
+let analyser;
+let microphone;
+
+async function startPitch() {
+
+  try {
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true
+    });
+
+    audioContext = new AudioContext();
+
+    microphone = audioContext.createMediaStreamSource(stream);
+
+    analyser = audioContext.createAnalyser();
+
+    analyser.fftSize = 2048;
+
+    microphone.connect(analyser);
+
+    document.getElementById("status").innerText =
+      "🎤 Listening... Sing a note";
+
+    detectPitch();
+
+  } catch (error) {
+
+    document.getElementById("status").innerText =
+      "Microphone permission is required.";
+
+  }
+}
+
+
+function detectPitch() {
+
+  const buffer = new Float32Array(analyser.fftSize);
+
+  analyser.getFloatTimeDomainData(buffer);
+
+  const frequency = autoCorrelate(buffer, audioContext.sampleRate);
+
+  if (frequency !== -1) {
+
+    const note = frequencyToNote(frequency);
+
+    document.getElementById("note").innerText = note;
+
+    document.getElementById("frequency").innerText =
+      "Frequency: " + frequency.toFixed(1) + " Hz";
+  }
+
+  requestAnimationFrame(detectPitch);
+}
+
+
+function autoCorrelate(buffer, sampleRate) {
+
+  let SIZE = buffer.length;
+
+  let rms = 0;
+
+  for (let i = 0; i < SIZE; i++) {
+    rms += buffer[i] * buffer[i];
+  }
+
+  rms = Math.sqrt(rms / SIZE);
+
+  if (rms < 0.01) {
+    return -1;
+  }
+
+  let bestOffset = -1;
+  let bestCorrelation = 0;
+
+  for (let offset = 20; offset < 1000; offset++) {
+
+    let correlation = 0;
+
+    for (let i = 0; i < SIZE - offset; i++) {
+      correlation += buffer[i] * buffer[i + offset];
+    }
+
+    correlation /= SIZE - offset;
+
+    if (correlation > bestCorrelation) {
+      bestCorrelation = correlation;
+      bestOffset = offset;
+    }
+  }
+
+  if (bestOffset === -1) {
+    return -1;
+  }
+
+  return sampleRate / bestOffset;
+}
+
+
+function frequencyToNote(frequency) {
+
+  const notes = [
+    "C", "C#", "D", "D#", "E", "F",
+    "F#", "G", "G#", "A", "A#", "B"
+  ];
+
+  const midi = Math.round(
+    69 + 12 * Math.log2(frequency / 440)
+  );
+
+  const note = notes[midi % 12];
+
+  const octave = Math.floor(midi / 12) - 1;
+
+  return note + octave;
+}
+
+</script>
+
+</body>
+</html>
