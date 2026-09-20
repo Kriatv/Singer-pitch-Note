@@ -1,171 +1,814 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Singer Pitch Note</title>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #111827;
-      color: white;
-      padding: 30px 15px;
-    }
+<title>Singer Pitch Note</title>
 
-    h1 {
-      font-size: 32px;
-      margin-bottom: 10px;
-    }
+<style>
 
-    p {
-      color: #cbd5e1;
-    }
+* {
+  box-sizing: border-box;
+}
 
-    button {
-      background: #2563eb;
-      color: white;
-      border: none;
-      padding: 16px 30px;
-      border-radius: 12px;
-      font-size: 18px;
-      margin: 20px;
-    }
+body {
+  margin: 0;
+  padding: 20px 14px 40px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  background:
+    radial-gradient(circle at top, #18233d 0%, #0b1120 55%, #070b14 100%);
+  color: white;
+  text-align: center;
+}
 
-    #note {
-      font-size: 70px;
-      font-weight: bold;
-      margin-top: 30px;
-    }
+.container {
+  max-width: 760px;
+  margin: auto;
+}
 
-    #frequency {
-      font-size: 24px;
-      color: #93c5fd;
-    }
+h1 {
+  font-size: 34px;
+  margin: 10px 0 6px;
+  font-weight: 800;
+}
 
-    #status {
-      margin-top: 20px;
-      color: #94a3b8;
-    }
-  </style>
+.subtitle {
+  color: #aebbd1;
+  font-size: 17px;
+  margin-bottom: 22px;
+}
+
+/* Main card */
+
+.card {
+  background: rgba(25, 36, 58, 0.92);
+  border: 1px solid #314361;
+  border-radius: 28px;
+  padding: 24px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 12px 35px rgba(0,0,0,.25);
+}
+
+/* Pitch */
+
+.pitch-label {
+  color: #9eabc1;
+  font-size: 16px;
+  margin-top: 2px;
+}
+
+#note {
+  font-size: 82px;
+  line-height: 1;
+  font-weight: 800;
+  margin: 12px 0 5px;
+  color: #f8fafc;
+}
+
+#frequency {
+  font-size: 21px;
+  color: #8ecaff;
+}
+
+#cents {
+  font-size: 18px;
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+/* Pitch meter */
+
+.meter-title {
+  margin-top: 28px;
+  color: #aab7cd;
+  font-size: 15px;
+}
+
+.meter {
+  position: relative;
+  height: 18px;
+  background: #2a3a59;
+  border-radius: 20px;
+  margin: 12px 8px 5px;
+  overflow: hidden;
+}
+
+.meter-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  transform: translateX(-50%);
+  background: white;
+  z-index: 3;
+  border-radius: 5px;
+}
+
+.needle {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 7px;
+  height: 32px;
+  background: #55d6f5;
+  border-radius: 8px;
+  transform: translateX(-50%);
+  transition: left .08s linear;
+  z-index: 4;
+  box-shadow: 0 0 12px rgba(85,214,245,.7);
+}
+
+.meter-labels {
+  display: flex;
+  justify-content: space-between;
+  color: #9eabc1;
+  font-size: 14px;
+  padding: 0 5px;
+}
+
+.perfect {
+  color: #34d399 !important;
+}
+
+.flat {
+  color: #60a5fa !important;
+}
+
+.sharp {
+  color: #fb923c !important;
+}
+
+.off {
+  color: #f87171 !important;
+}
+
+/* Status */
+
+#status {
+  margin-top: 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+/* Buttons */
+
+.controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+button {
+  border: none;
+  border-radius: 16px;
+  padding: 15px 20px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 54px;
+}
+
+.start {
+  background: #22c55e;
+  color: #06140b;
+  flex: 1;
+}
+
+.stop {
+  background: #8f3541;
+  color: white;
+  flex: .7;
+}
+
+button:active {
+  transform: scale(.97);
+}
+
+/* Target */
+
+.target-title {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 20px;
+}
+
+.target-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+}
+
+select {
+  background: #101827;
+  color: white;
+  border: 2px solid #40516e;
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: 20px;
+  min-width: 110px;
+}
+
+.play {
+  background: #f3f4f6;
+  color: #1479dc;
+  flex: 1;
+  max-width: 260px;
+}
+
+.target-message {
+  margin-top: 18px;
+  color: #8e9bb1;
+  line-height: 1.5;
+}
+
+/* Statistics */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.stat {
+  background: #111b2d;
+  border-radius: 16px;
+  padding: 14px 5px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.stat-label {
+  color: #8997ad;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Target success */
+
+.success {
+  animation: successPulse .7s ease;
+}
+
+@keyframes successPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@media (max-width: 500px) {
+
+  body {
+    padding: 15px 10px 30px;
+  }
+
+  h1 {
+    font-size: 30px;
+  }
+
+  .card {
+    border-radius: 24px;
+    padding: 20px 14px;
+  }
+
+  #note {
+    font-size: 72px;
+  }
+
+  .target-controls {
+    flex-direction: row;
+  }
+
+  button {
+    font-size: 16px;
+  }
+}
+
+</style>
 </head>
 
 <body>
 
+<div class="container">
+
   <h1>🎤 Singer Pitch Note</h1>
 
-  <p>Sing a note and see its musical pitch.</p>
+  <div class="subtitle">
+    Real-time pitch detection & vocal training
+  </div>
 
-  <button onclick="startPitch()">Start Singing</button>
+  <!-- PITCH CARD -->
 
-  <div id="note">—</div>
+  <div class="card">
 
-  <div id="frequency">Frequency: — Hz</div>
+    <div class="pitch-label">CURRENT NOTE</div>
 
-  <div id="status">Microphone not started</div>
+    <div id="note">—</div>
+
+    <div id="frequency">
+      Frequency: — Hz
+    </div>
+
+    <div id="cents">
+      Sing a note
+    </div>
+
+    <div class="meter-title">
+      PITCH ACCURACY
+    </div>
+
+    <div class="meter">
+
+      <div class="meter-center"></div>
+
+      <div id="needle" class="needle"></div>
+
+    </div>
+
+    <div class="meter-labels">
+      <span>♭ LOW</span>
+      <span>PERFECT</span>
+      <span>HIGH ♯</span>
+    </div>
+
+    <div id="status">
+      Microphone is off
+    </div>
+
+    <div class="controls">
+
+      <button class="start" onclick="startPitch()">
+        🎤 Start Singing
+      </button>
+
+      <button class="stop" onclick="stopPitch()">
+        ⏹ Stop
+      </button>
+
+    </div>
+
+    <div class="stats">
+
+      <div class="stat">
+        <div id="accuracy" class="stat-value">—</div>
+        <div class="stat-label">ACCURACY</div>
+      </div>
+
+      <div class="stat">
+        <div id="inTune" class="stat-value">0s</div>
+        <div class="stat-label">IN TUNE</div>
+      </div>
+
+      <div class="stat">
+        <div id="samples" class="stat-value">0</div>
+        <div class="stat-label">NOTES</div>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- TARGET NOTE -->
+
+  <div class="card">
+
+    <div class="target-title">
+      🎯 Target Note
+    </div>
+
+    <div class="target-controls">
+
+      <select id="targetNote">
+
+        <option>C4</option>
+        <option>C#4</option>
+        <option>D4</option>
+        <option>D#4</option>
+        <option>E4</option>
+        <option>F4</option>
+        <option>F#4</option>
+        <option selected>G4</option>
+        <option>G#4</option>
+        <option>A4</option>
+        <option>A#4</option>
+        <option>B4</option>
+
+        <option>C5</option>
+        <option>C#5</option>
+        <option>D5</option>
+        <option>D#5</option>
+        <option>E5</option>
+        <option>F5</option>
+        <option>F#5</option>
+        <option>G5</option>
+        <option>G#5</option>
+        <option>A5</option>
+        <option>A#5</option>
+        <option>B5</option>
+
+      </select>
+
+      <button class="play" onclick="playTarget()">
+        🔊 Play Target
+      </button>
+
+    </div>
+
+    <div id="targetMessage" class="target-message">
+      Try to match the target note.
+      Keep the needle close to the center.
+    </div>
+
+  </div>
+
+</div>
+
 
 <script>
 
 let audioContext;
 let analyser;
 let microphone;
+let stream;
+let animationId;
+
+let running = false;
+
+let totalSamples = 0;
+let accurateSamples = 0;
+let inTuneSeconds = 0;
+let lastTime = null;
+
+
+/* -------------------------
+   START MICROPHONE
+------------------------- */
 
 async function startPitch() {
 
+  if (running) return;
+
   try {
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        autoGainControl: false,
+        noiseSuppression: false
+      }
     });
 
-    audioContext = new AudioContext();
+    audioContext = new (window.AudioContext ||
+      window.webkitAudioContext)();
 
-    microphone = audioContext.createMediaStreamSource(stream);
+    await audioContext.resume();
 
-    analyser = audioContext.createAnalyser();
+    microphone =
+      audioContext.createMediaStreamSource(stream);
 
-    analyser.fftSize = 2048;
+    analyser =
+      audioContext.createAnalyser();
+
+    analyser.fftSize = 4096;
+
+    analyser.smoothingTimeConstant = 0;
 
     microphone.connect(analyser);
+
+    running = true;
+
+    totalSamples = 0;
+    accurateSamples = 0;
+    inTuneSeconds = 0;
+    lastTime = performance.now();
 
     document.getElementById("status").innerText =
       "🎤 Listening... Sing a note";
 
+    document.getElementById("status").className = "";
+
     detectPitch();
 
-  } catch (error) {
+  }
+
+  catch(error) {
+
+    console.log(error);
 
     document.getElementById("status").innerText =
       "Microphone permission is required.";
 
   }
+
 }
 
+
+/* -------------------------
+   STOP
+------------------------- */
+
+function stopPitch() {
+
+  running = false;
+
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
+
+  if (stream) {
+
+    stream.getTracks().forEach(track => {
+      track.stop();
+    });
+
+  }
+
+  if (audioContext) {
+    audioContext.close();
+  }
+
+  document.getElementById("status").innerText =
+    "Microphone is off";
+
+}
+
+
+/* -------------------------
+   DETECT PITCH
+------------------------- */
 
 function detectPitch() {
 
-  const buffer = new Float32Array(analyser.fftSize);
+  if (!running) return;
+
+  const buffer =
+    new Float32Array(analyser.fftSize);
 
   analyser.getFloatTimeDomainData(buffer);
 
-  const frequency = autoCorrelate(buffer, audioContext.sampleRate);
+  const frequency =
+    autoCorrelate(
+      buffer,
+      audioContext.sampleRate
+    );
 
   if (frequency !== -1) {
 
-    const note = frequencyToNote(frequency);
+    const result =
+      frequencyToNote(frequency);
 
-    document.getElementById("note").innerText = note;
+    document.getElementById("note").innerText =
+      result.note;
 
     document.getElementById("frequency").innerText =
-      "Frequency: " + frequency.toFixed(1) + " Hz";
+      "Frequency: " +
+      frequency.toFixed(1) +
+      " Hz";
+
+    updatePitch(result, frequency);
+
   }
 
-  requestAnimationFrame(detectPitch);
+  animationId =
+    requestAnimationFrame(detectPitch);
 }
 
 
+/* -------------------------
+   PITCH ANALYSIS
+------------------------- */
+
+function updatePitch(result, frequency) {
+
+  const cents = result.cents;
+
+  const centsText =
+    (cents > 0 ? "+" : "") +
+    cents.toFixed(0) +
+    " cents";
+
+  const centsElement =
+    document.getElementById("cents");
+
+  centsElement.innerText =
+    centsText;
+
+  centsElement.className = "";
+
+  /*
+     Limit meter to ±50 cents
+  */
+
+  let position =
+    50 + Math.max(-50, Math.min(50, cents));
+
+  document.getElementById("needle")
+    .style.left = position + "%";
+
+
+  totalSamples++;
+
+
+  /*
+     IN TUNE = within ±10 cents
+  */
+
+  if (Math.abs(cents) <= 10) {
+
+    accurateSamples++;
+
+    document.getElementById("status").innerText =
+      "✓ PERFECT — In tune";
+
+    centsElement.classList.add("perfect");
+
+    if (Math.abs(cents) <= 5) {
+
+      document.getElementById("note")
+        .classList.add("success");
+
+    }
+
+    const now = performance.now();
+
+    if (lastTime) {
+
+      const delta =
+        (now - lastTime) / 1000;
+
+      if (delta < 0.2) {
+        inTuneSeconds += delta;
+      }
+
+    }
+
+  }
+
+  else if (cents < 0) {
+
+    document.getElementById("status").innerText =
+      "♭ Slightly flat";
+
+    centsElement.classList.add(
+      Math.abs(cents) > 30 ? "off" : "flat"
+    );
+
+  }
+
+  else {
+
+    document.getElementById("status").innerText =
+      "♯ Slightly sharp";
+
+    centsElement.classList.add(
+      Math.abs(cents) > 30 ? "off" : "sharp"
+    );
+
+  }
+
+  lastTime =
+    performance.now();
+
+
+  /*
+     Accuracy
+  */
+
+  const accuracy =
+    (accurateSamples / totalSamples) * 100;
+
+  document.getElementById("accuracy")
+    .innerText =
+    accuracy.toFixed(0) + "%";
+
+  document.getElementById("inTune")
+    .innerText =
+    inTuneSeconds.toFixed(1) + "s";
+
+  document.getElementById("samples")
+    .innerText =
+    totalSamples;
+
+}
+
+
+/* -------------------------
+   AUTOCORRELATION
+------------------------- */
+
 function autoCorrelate(buffer, sampleRate) {
 
-  let SIZE = buffer.length;
+  const SIZE = buffer.length;
 
   let rms = 0;
 
   for (let i = 0; i < SIZE; i++) {
+
     rms += buffer[i] * buffer[i];
+
   }
 
-  rms = Math.sqrt(rms / SIZE);
+  rms =
+    Math.sqrt(rms / SIZE);
 
-  if (rms < 0.01) {
+  /*
+     Ignore very quiet sound
+  */
+
+  if (rms < 0.008) {
     return -1;
   }
+
+
+  /*
+     Singer range:
+     approximately 60–1000 Hz
+  */
+
+  const minFreq = 60;
+  const maxFreq = 1000;
+
+  const minOffset =
+    Math.floor(sampleRate / maxFreq);
+
+  const maxOffset =
+    Math.floor(sampleRate / minFreq);
+
 
   let bestOffset = -1;
   let bestCorrelation = 0;
 
-  for (let offset = 20; offset < 1000; offset++) {
+
+  for (
+    let offset = minOffset;
+    offset <= maxOffset;
+    offset++
+  ) {
 
     let correlation = 0;
 
-    for (let i = 0; i < SIZE - offset; i++) {
-      correlation += buffer[i] * buffer[i + offset];
+    for (
+      let i = 0;
+      i < SIZE - offset;
+      i++
+    ) {
+
+      correlation +=
+        buffer[i] *
+        buffer[i + offset];
+
     }
 
-    correlation /= SIZE - offset;
+    correlation /=
+      SIZE - offset;
+
 
     if (correlation > bestCorrelation) {
-      bestCorrelation = correlation;
-      bestOffset = offset;
+
+      bestCorrelation =
+        correlation;
+
+      bestOffset =
+        offset;
+
     }
+
   }
 
-  if (bestOffset === -1) {
+
+  /*
+     Reject weak pitch detection
+  */
+
+  if (
+    bestOffset === -1 ||
+    bestCorrelation < 0.01
+  ) {
+
     return -1;
+
   }
+
 
   return sampleRate / bestOffset;
+
 }
 
+
+/* -------------------------
+   FREQUENCY → NOTE
+------------------------- */
 
 function frequencyToNote(frequency) {
 
@@ -174,15 +817,159 @@ function frequencyToNote(frequency) {
     "F#", "G", "G#", "A", "A#", "B"
   ];
 
-  const midi = Math.round(
-    69 + 12 * Math.log2(frequency / 440)
+
+  const exactMidi =
+    69 +
+    12 *
+    Math.log2(frequency / 440);
+
+
+  const midi =
+    Math.round(exactMidi);
+
+
+  const note =
+    notes[
+      ((midi % 12) + 12) % 12
+    ];
+
+
+  const octave =
+    Math.floor(midi / 12) - 1;
+
+
+  /*
+     Cents deviation from nearest note
+  */
+
+  const cents =
+    (exactMidi - midi) * 100;
+
+
+  return {
+
+    note: note + octave,
+
+    midi: midi,
+
+    cents: cents
+
+  };
+
+}
+
+
+/* -------------------------
+   TARGET NOTE
+------------------------- */
+
+function noteToFrequency(note) {
+
+  const notes = [
+    "C", "C#", "D", "D#", "E", "F",
+    "F#", "G", "G#", "A", "A#", "B"
+  ];
+
+
+  const match =
+    note.match(/^([A-G]#?)(\d)$/);
+
+  if (!match) return 440;
+
+
+  const noteName = match[1];
+
+  const octave =
+    parseInt(match[2]);
+
+
+  const noteIndex =
+    notes.indexOf(noteName);
+
+
+  const midi =
+    (octave + 1) * 12 +
+    noteIndex;
+
+
+  return 440 *
+    Math.pow(
+      2,
+      (midi - 69) / 12
+    );
+
+}
+
+
+/* -------------------------
+   PLAY TARGET
+------------------------- */
+
+function playTarget() {
+
+  const target =
+    document.getElementById("targetNote")
+      .value;
+
+  const frequency =
+    noteToFrequency(target);
+
+
+  const ctx =
+    new (window.AudioContext ||
+      window.webkitAudioContext)();
+
+
+  const oscillator =
+    ctx.createOscillator();
+
+  const gain =
+    ctx.createGain();
+
+
+  oscillator.type =
+    "sine";
+
+  oscillator.frequency.value =
+    frequency;
+
+
+  gain.gain.setValueAtTime(
+    0,
+    ctx.currentTime
   );
 
-  const note = notes[midi % 12];
 
-  const octave = Math.floor(midi / 12) - 1;
+  gain.gain.linearRampToValueAtTime(
+    0.25,
+    ctx.currentTime + 0.05
+  );
 
-  return note + octave;
+
+  gain.gain.linearRampToValueAtTime(
+    0,
+    ctx.currentTime + 1.2
+  );
+
+
+  oscillator.connect(gain);
+
+  gain.connect(ctx.destination);
+
+
+  oscillator.start();
+
+  oscillator.stop(
+    ctx.currentTime + 1.2
+  );
+
+
+  document.getElementById(
+    "targetMessage"
+  ).innerText =
+    "🎯 Target: " + target +
+    " — now sing and match it.";
+
 }
 
 </script>
