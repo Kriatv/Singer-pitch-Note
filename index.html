@@ -740,9 +740,9 @@ function detectPitch() {
 
       stablePitch =
 
-        stablePitch * 0.75 +
+        stablePitch * 0.60 +
 
-        frequency * 0.25;
+        frequency * 0.40;
 
     }
 
@@ -980,7 +980,7 @@ AUTO CRRELATION
   rms = Math.sqrt(rms / SIZE);
 
   // Ignore silence and very weak microphone noise
-  if (rms < 0.015) {
+  if (rms < 0.006) {
     return -1;
   }
 
@@ -1006,8 +1006,8 @@ AUTO CRRELATION
   // 3. Singer frequency range
   // -----------------------------
 
-  const minFreq = 70;
-  const maxFreq = 1000;
+  const minFreq = 60;
+  const maxFreq = 2200;
 
   const minLag = Math.floor(sampleRate / maxFreq);
   const maxLag = Math.floor(sampleRate / minFreq);
@@ -1066,7 +1066,7 @@ AUTO CRRELATION
   // 6. Find first strong valley
   // -----------------------------
 
-  const threshold = 0.12;
+  const threshold = 0.18;
 
   let bestLag = -1;
 
@@ -1123,7 +1123,7 @@ AUTO CRRELATION
     // Reject weak detection
     if (
       bestLag === -1 ||
-      cmndf[bestLag] > 0.30
+      cmndf[bestLag] > 0.46
     ) {
       return -1;
     }
